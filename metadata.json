@@ -1,0 +1,5 @@
+{
+  "name": "Electricity Bill Management System",
+  "description": "A web application to manage electricity bills for administrators and customers. Users can register, log in, view bills, and manage customer data.",
+  "requestFramePermissions": []
+}
