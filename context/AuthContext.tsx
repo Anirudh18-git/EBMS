@@ -6,7 +6,7 @@ import * as storage from '../services/storageService';
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  login: (identifier: string, password: string, role: UserRole) => Promise<User | null>;
+  login: (identifier: string, password: string) => Promise<User | null>;
   logout: () => void;
   register: (userData: Omit<User, 'id' | 'role'>) => Promise<User>;
   updateProfile: (updatedData: Partial<User>) => void;
@@ -22,38 +22,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (loggedInUser) {
       setUser(loggedInUser);
     }
-    // Initialize users if not present
-    storage.getUsers();
   }, []);
 
-  const login = useCallback(async (identifier: string, password: string, role: UserRole): Promise<User | null> => {
-    const users = storage.getUsers();
-    const userFound = users.find(u => 
-        u.role === role && 
-        (u.email === identifier || u.meterNumber === identifier) && 
-        u.password === password
-    );
-
-    if (userFound) {
-      const userToStore = { ...userFound };
-      delete userToStore.password;
-      setUser(userToStore);
-      storage.saveAuthenticatedUser(userToStore);
-      return userToStore;
+  const login = useCallback(async (identifier: string, password: string): Promise<User | null> => {
+    try {
+      const result = await storage.login(identifier, password);
+      setUser(result.user);
+      return result.user;
+    } catch (error) {
+      console.error('Login failed', error);
+      return null;
     }
-    
-    return null;
   }, []);
 
   const register = useCallback(async (userData: Omit<User, 'id' | 'role'>): Promise<User> => {
-    const users = storage.getUsers();
-    const newUser: User = {
-        ...userData,
-        id: `user_${new Date().getTime()}`,
-        role: UserRole.CUSTOMER
-    };
-    storage.addUser(newUser);
-    return newUser;
+    try {
+      const result = await storage.register({ ...userData, role: UserRole.CUSTOMER });
+      setUser(result.user);
+      return result.user;
+    } catch (error) {
+      console.error('Register failed', error);
+      throw error;
+    }
   }, []);
 
   const logout = useCallback(() => {
@@ -61,19 +51,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     storage.saveAuthenticatedUser(null);
   }, []);
   
-  const updateProfile = useCallback((updatedData: Partial<User>) => {
+  const updateProfile = useCallback(async (updatedData: Partial<User>) => {
     if(!user) return;
 
     const updatedUser = { ...user, ...updatedData };
     setUser(updatedUser);
     storage.saveAuthenticatedUser(updatedUser);
 
-    const allUsers = storage.getUsers();
-    const userIndex = allUsers.findIndex(u => u.id === user.id);
-    if(userIndex > -1) {
-        allUsers[userIndex] = { ...allUsers[userIndex], ...updatedData };
-        storage.saveUsers(allUsers);
-    }
+    // Note: In API mode, profile update would call a PUT /api/auth/me, but for now, local only
   }, [user]);
 
   return (

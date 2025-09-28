@@ -10,40 +10,34 @@ const ViewBillsAdminPage: React.FC = () => {
         loadBills();
     }, []);
 
-    const loadBills = () => {
-        setBills(storage.getBills().sort((a,b) => new Date(b.generationDate).getTime() - new Date(a.generationDate).getTime()));
+    const loadBills = async () => {
+        const allBills = await storage.getBills();
+        setBills(allBills.sort((a,b) => new Date(b.generationDate).getTime() - new Date(a.generationDate).getTime()));
     };
 
-    const handleToggleStatus = (billId: string) => {
-        const updatedBills = bills.map(bill => {
-            if (bill.id === billId) {
-                const isNowPaid = bill.status === BillStatus.UNPAID;
-                const newStatus = isNowPaid ? BillStatus.PAID : BillStatus.UNPAID;
-                
-                let newPayments: Payment[] = bill.payments || [];
-                if (isNowPaid) {
-                    newPayments = [...newPayments, {
-                        id: `pay_${new Date().getTime()}`,
-                        date: new Date().toISOString(),
-                        amount: bill.amount,
-                    }];
-                } else {
-                    newPayments = []; // Clear payments if marked as unpaid
-                }
+    const handleToggleStatus = async (billId: string) => {
+        const bill = bills.find(b => b.id === billId);
+        if (!bill) return;
 
-                return { ...bill, status: newStatus, payments: newPayments };
-            }
-            return bill;
-        });
-        setBills(updatedBills);
-        storage.saveBills(updatedBills);
-    };
+        const isNowPaid = bill.status === BillStatus.UNPAID;
+        const newStatus = isNowPaid ? BillStatus.PAID : BillStatus.UNPAID;
 
-    const handleDeleteBill = (billId: string) => {
-        if(window.confirm("Are you sure you want to delete this bill?")) {
-            const updatedBills = bills.filter(bill => bill.id !== billId);
-            setBills(updatedBills);
-            storage.saveBills(updatedBills);
+        let newPayments: Payment[] = bill.payments || [];
+        if (isNowPaid) {
+            newPayments = [...newPayments, {
+                id: `pay_${new Date().getTime()}`,
+                date: new Date().toISOString(),
+                amount: bill.amount,
+            }];
+        } else {
+            newPayments = []; // Clear payments if marked as unpaid
+        }
+
+        try {
+            await storage.updateBill(billId, { status: newStatus, payments: newPayments });
+            loadBills();
+        } catch (error) {
+            console.error("Failed to update bill status", error);
         }
     };
 
@@ -86,7 +80,6 @@ const ViewBillsAdminPage: React.FC = () => {
                                         <button onClick={() => handleToggleStatus(bill.id)} className={`w-full sm:w-auto px-3 py-1 text-xs rounded ${bill.status === BillStatus.UNPAID ? 'bg-green-500 hover:bg-green-600' : 'bg-yellow-500 hover:bg-yellow-600'} text-white`}>
                                             Mark as {bill.status === BillStatus.UNPAID ? 'Paid' : 'Unpaid'}
                                         </button>
-                                        <button onClick={() => handleDeleteBill(bill.id)} className="w-full sm:w-auto px-3 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white">Delete</button>
                                     </div>
                                 </td>
                             </tr>,

@@ -1,71 +1,94 @@
 
 import { User, Bill, UserRole } from '../types';
-import { LOCAL_STORAGE_USERS_KEY, LOCAL_STORAGE_BILLS_KEY, LOCAL_STORAGE_AUTH_KEY } from '../constants';
+import { LOCAL_STORAGE_AUTH_KEY } from '../constants';
+import { apiRequest } from './apiService';
 
 // --- User Management ---
 
-const getInitialUsers = (): User[] => {
-    const adminUser: User = {
-        id: 'admin_001',
-        name: 'Admin',
-        address: '123 Power Grid St.',
-        email: 'admin@system.com',
-        meterNumber: 'N/A',
-        password: 'admin',
-        role: UserRole.ADMIN,
-    };
-    return [adminUser];
-};
-
-export const getUsers = (): User[] => {
+export const getUsers = async (): Promise<User[]> => {
     try {
-        const usersJson = localStorage.getItem(LOCAL_STORAGE_USERS_KEY);
-        if (!usersJson) {
-            const initialUsers = getInitialUsers();
-            localStorage.setItem(LOCAL_STORAGE_USERS_KEY, JSON.stringify(initialUsers));
-            return initialUsers;
-        }
-        return JSON.parse(usersJson) as User[];
+        const data = await apiRequest('/users');
+        return data.map((u: any) => ({ ...u, id: u._id })); // Map _id to id
     } catch (error) {
-        console.error("Failed to parse users from localStorage", error);
-        return getInitialUsers();
-    }
-};
-
-export const saveUsers = (users: User[]): void => {
-    localStorage.setItem(LOCAL_STORAGE_USERS_KEY, JSON.stringify(users));
-};
-
-export const addUser = (user: User): User[] => {
-    const users = getUsers();
-    const updatedUsers = [...users, user];
-    saveUsers(updatedUsers);
-    return updatedUsers;
-};
-
-
-// --- Bill Management ---
-
-export const getBills = (): Bill[] => {
-    try {
-        const billsJson = localStorage.getItem(LOCAL_STORAGE_BILLS_KEY);
-        return billsJson ? JSON.parse(billsJson) : [];
-    } catch (error) {
-        console.error("Failed to parse bills from localStorage", error);
+        console.error("Failed to fetch users", error);
         return [];
     }
 };
 
-export const saveBills = (bills: Bill[]): void => {
-    localStorage.setItem(LOCAL_STORAGE_BILLS_KEY, JSON.stringify(bills));
+export const addUser = async (user: Omit<User, 'id'>): Promise<User> => {
+    try {
+        const data = await apiRequest('/users', {
+            method: 'POST',
+            body: JSON.stringify(user),
+        });
+        return { ...data, id: data._id };
+    } catch (error) {
+        console.error("Failed to add user", error);
+        throw error;
+    }
 };
 
-export const addBill = (bill: Bill): void => {
-    const bills = getBills();
-    saveBills([...bills, bill]);
+// --- Bill Management ---
+
+export const getBills = async (): Promise<Bill[]> => {
+    try {
+        const data = await apiRequest('/bills');
+        return data.map((b: any) => ({ ...b, id: b._id, customerId: b.customerId._id || b.customerId })); // Map _id
+    } catch (error) {
+        console.error("Failed to fetch bills", error);
+        return [];
+    }
+};
+
+export const addBill = async (bill: Omit<Bill, 'id'>): Promise<Bill> => {
+    try {
+        const data = await apiRequest('/bills', {
+            method: 'POST',
+            body: JSON.stringify(bill),
+        });
+        return { ...data, id: data._id };
+    } catch (error) {
+        console.error("Failed to add bill", error);
+        throw error;
+    }
+};
+
+export const updateBill = async (id: string, updates: Partial<Bill>): Promise<Bill> => {
+    try {
+        const data = await apiRequest(`/bills/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(updates),
+        });
+        return { ...data, id: data._id };
+    } catch (error) {
+        console.error("Failed to update bill", error);
+        throw error;
+    }
 };
 
 // --- Auth Management ---
+
+export const login = async (email: string, password: string): Promise<{ token: string; user: User }> => {
+    const data = await apiRequest('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+    });
+    localStorage.setItem('token', data.token);
+    const user = { ...data.user, id: data.user.id };
+    saveAuthenticatedUser(user);
+    return { token: data.token, user };
+};
+
+export const register = async (user: Omit<User, 'id'>): Promise<{ token: string; user: User }> => {
+    const data = await apiRequest('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify(user),
+    });
+    localStorage.setItem('token', data.token);
+    const newUser = { ...data.user, id: data.user.id };
+    saveAuthenticatedUser(newUser);
+    return { token: data.token, user: newUser };
+};
 
 export const getAuthenticatedUser = (): User | null => {
     try {
@@ -82,5 +105,6 @@ export const saveAuthenticatedUser = (user: User | null): void => {
         localStorage.setItem(LOCAL_STORAGE_AUTH_KEY, JSON.stringify(user));
     } else {
         localStorage.removeItem(LOCAL_STORAGE_AUTH_KEY);
+        localStorage.removeItem('token');
     }
 };

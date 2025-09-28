@@ -25,9 +25,13 @@ function App() {
           <Route path="/register" element={<RegisterPage />} />
 
           {/* Admin Routes */}
-          <Route 
-            path="/admin/dashboard" 
-            element={<ProtectedRoute allowedRoles={[UserRole.ADMIN]}><AdminDashboard /></ProtectedRoute>} 
+          <Route
+            path="/admin"
+            element={<ProtectedRoute allowedRoles={[UserRole.ADMIN]}><Navigate to="/admin/dashboard" /></ProtectedRoute>}
+          />
+          <Route
+            path="/admin/dashboard"
+            element={<ProtectedRoute allowedRoles={[UserRole.ADMIN]}><AdminDashboard /></ProtectedRoute>}
           />
           <Route 
             path="/admin/add-customer" 

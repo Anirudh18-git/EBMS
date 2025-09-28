@@ -16,9 +16,9 @@ const AddCustomerPage: React.FC = () => {
     useEffect(() => {
         loadCustomers();
     }, []);
-    
-    const loadCustomers = () => {
-        const allUsers = storage.getUsers();
+
+    const loadCustomers = async () => {
+        const allUsers = await storage.getUsers();
         setCustomers(allUsers.filter(u => u.role === UserRole.CUSTOMER));
     };
 
@@ -26,7 +26,7 @@ const AddCustomerPage: React.FC = () => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    const handleSubmit = (e: FormEvent) => {
+    const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         const newCustomer: User = {
             id: `user_${new Date().getTime()}`,
@@ -34,10 +34,10 @@ const AddCustomerPage: React.FC = () => {
             role: UserRole.CUSTOMER,
             password: 'password123' // Default password, user should change it
         };
-        storage.addUser(newCustomer);
+        await storage.addUser(newCustomer);
         setSuccess(`Customer "${formData.name}" added successfully!`);
         setFormData({ name: '', address: '', meterNumber: '', email: '' });
-        loadCustomers();
+        await loadCustomers();
         setTimeout(() => setSuccess(''), 3000);
     };
 

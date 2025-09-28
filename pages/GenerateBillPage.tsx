@@ -12,8 +12,11 @@ const GenerateBillPage: React.FC = () => {
     const [success, setSuccess] = useState('');
 
     useEffect(() => {
-        const allUsers = storage.getUsers();
-        setCustomers(allUsers.filter(u => u.role === UserRole.CUSTOMER));
+        const loadCustomers = async () => {
+            const allUsers = await storage.getUsers();
+            setCustomers(allUsers.filter(u => u.role === UserRole.CUSTOMER));
+        };
+        loadCustomers();
     }, []);
 
     const calculateBill = (unitsConsumed: number): number => {
@@ -28,7 +31,7 @@ const GenerateBillPage: React.FC = () => {
         return amount;
     };
 
-    const handleSubmit = (e: FormEvent) => {
+    const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setSuccess('');
         const customer = customers.find(c => c.id === selectedCustomerId);
@@ -50,8 +53,8 @@ const GenerateBillPage: React.FC = () => {
             status: BillStatus.UNPAID,
             generationDate: new Date().toISOString()
         };
-        
-        storage.addBill(newBill);
+
+        await storage.addBill(newBill);
         setGeneratedBill(newBill);
         setSuccess('Bill generated and saved successfully!');
         setSelectedCustomerId('');

@@ -32,11 +32,24 @@ const RegisterPage: React.FC = () => {
         }
 
         try {
-            await register({ ...formData });
-            setSuccess('Registration successful! Redirecting to login...');
-            setTimeout(() => navigate('/login'), 2000);
-        } catch (err) {
-            setError('An error occurred during registration.');
+            const userData = {
+                name: formData.name,
+                address: formData.address,
+                email: formData.email,
+                meterNumber: formData.meterNumber,
+                password: formData.password
+            };
+            const user = await register(userData);
+            setSuccess('Registration successful! Redirecting...');
+            setTimeout(() => {
+                if (user.role === 'CUSTOMER') {
+                    navigate('/customer/dashboard');
+                } else {
+                    navigate('/login');
+                }
+            }, 2000);
+        } catch (err: any) {
+            setError(err.message || 'An error occurred during registration.');
         }
     };
 

@@ -10,40 +10,37 @@ const ViewBillsCustomerPage: React.FC = () => {
     const [paymentModalBill, setPaymentModalBill] = useState<Bill | null>(null);
 
     useEffect(() => {
-        if (user) {
-            const allBills = storage.getBills();
-            setBills(allBills.filter(bill => bill.customerId === user.id)
-            .sort((a,b) => new Date(b.generationDate).getTime() - new Date(a.generationDate).getTime()));
-        }
+        loadBills();
     }, [user]);
 
-    const handlePayNow = (billId: string) => {
-        const allBills = storage.getBills();
-        const updatedBills = allBills.map(bill => {
-            if (bill.id === billId) {
-                const newPayment: Payment = {
-                    id: `pay_${new Date().getTime()}`,
-                    date: new Date().toISOString(),
-                    amount: bill.amount
-                };
-                return { 
-                    ...bill, 
-                    status: BillStatus.PAID,
-                    payments: [...(bill.payments || []), newPayment]
-                };
-            }
-            return bill;
-        });
-        storage.saveBills(updatedBills);
-        // Refresh this component's state
-        setBills(prevBills => prevBills.map(b => {
-             if (b.id === billId) {
-                const newPayment: Payment = { id: `pay_${new Date().getTime()}`, date: new Date().toISOString(), amount: b.amount };
-                return { ...b, status: BillStatus.PAID, payments: [...(b.payments || []), newPayment] };
-             }
-             return b;
-        }));
-        setPaymentModalBill(null); // Close modal after payment
+    const loadBills = async () => {
+        if (user) {
+            const allBills = await storage.getBills();
+            setBills(allBills.filter(bill => bill.customerId === user.id)
+                .sort((a, b) => new Date(b.generationDate).getTime() - new Date(a.generationDate).getTime()));
+        }
+    };
+
+    const handlePayNow = async (billId: string) => {
+        const bill = bills.find(b => b.id === billId);
+        if (!bill) return;
+
+        const newPayment: Payment = {
+            id: `pay_${new Date().getTime()}`,
+            date: new Date().toISOString(),
+            amount: bill.amount
+        };
+
+        try {
+            await storage.updateBill(billId, {
+                status: BillStatus.PAID,
+                payments: [...(bill.payments || []), newPayment]
+            });
+            loadBills();
+            setPaymentModalBill(null); // Close modal after payment
+        } catch (error) {
+            console.error("Failed to process payment", error);
+        }
     };
     
     const handlePrintBill = (billToPrint: Bill) => {
