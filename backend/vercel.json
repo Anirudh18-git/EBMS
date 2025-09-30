@@ -1,11 +1,6 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "server.js",
-      "use": "@vercel/node"
-    }
-  ],
+  "buildCommand": "echo 'Build skipped for Node.js server'",
   "routes": [
     {
       "src": "/(.*)",

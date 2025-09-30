@@ -15,7 +15,7 @@ const LoginPage: React.FC = () => {
         e.preventDefault();
         setError('');
         try {
-            const user = await login(identifier, password, role);
+            const user = await login(identifier, password);
             if (user) {
                 if(user.role === UserRole.ADMIN) {
                     navigate('/admin/dashboard');
